@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pfc-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pfc}
+      POSTGRES_USER: ${POSTGRES_USER:-pfc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pfc}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pfc-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  pfc-postgres-data:
