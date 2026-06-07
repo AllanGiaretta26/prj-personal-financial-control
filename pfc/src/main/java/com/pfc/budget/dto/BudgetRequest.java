@@ -4,10 +4,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
+@Getter
+@Setter
 public class BudgetRequest {
 
     @NotNull
@@ -20,28 +24,4 @@ public class BudgetRequest {
     @NotNull
     @Positive
     private BigDecimal limitAmount;
-
-    public UUID getCategoryId() {
-        return categoryId;
-    }
-
-    public void setCategoryId(UUID categoryId) {
-        this.categoryId = categoryId;
-    }
-
-    public String getReferenceMonth() {
-        return referenceMonth;
-    }
-
-    public void setReferenceMonth(String referenceMonth) {
-        this.referenceMonth = referenceMonth;
-    }
-
-    public BigDecimal getLimitAmount() {
-        return limitAmount;
-    }
-
-    public void setLimitAmount(BigDecimal limitAmount) {
-        this.limitAmount = limitAmount;
-    }
 }

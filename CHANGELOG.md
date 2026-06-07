@@ -27,6 +27,11 @@ Convenção de preenchimento (ler antes de editar):
 - `AGENTS.md` com instruções para agentes de IA que trabalham no repositório.
 - `CLAUDE.md` com orientações específicas para Claude Code.
 - Este changelog.
+- Dependência `lombok` (escopo `provided`/opcional) para reduzir código boilerplate em entidades e DTOs.
+
+### Alterado
+- Entidades JPA (`Account`, `Category`, `Transaction`, `Budget`) e DTOs de request/response refatorados para usar anotações Lombok (`@Getter`, `@Setter`, `@AllArgsConstructor`) no lugar de getters/setters/construtores escritos manualmente.
+- `TransactionResponse` e `BudgetResponse` passaram a ser construídos via construtor all-args (alinhando com o padrão já adotado por `AccountResponse`/`CategoryResponse`), em vez de `new` + setters.
 
 ## [0.1.0] - 2026-06-05
 

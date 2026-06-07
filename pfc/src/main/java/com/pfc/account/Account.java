@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -16,6 +18,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "account")
+@Getter
+@Setter
 public class Account {
 
     @Id
@@ -35,36 +39,4 @@ public class Account {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public AccountType getType() {
-        return type;
-    }
-
-    public void setType(AccountType type) {
-        this.type = type;
-    }
-
-    public BigDecimal getInitialBalance() {
-        return initialBalance;
-    }
-
-    public void setInitialBalance(BigDecimal initialBalance) {
-        this.initialBalance = initialBalance;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
 }
