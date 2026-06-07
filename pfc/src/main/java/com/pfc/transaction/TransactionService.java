@@ -94,17 +94,17 @@ public class TransactionService {
 
     /** Desnormaliza nome da conta e da categoria no DTO para evitar lazy-load posterior. */
     private TransactionResponse toResponse(Transaction t) {
-        TransactionResponse response = new TransactionResponse();
-        response.setId(t.getId());
-        response.setDescription(t.getDescription());
-        response.setAmount(t.getAmount());
-        response.setOccurredOn(t.getOccurredOn());
-        response.setType(t.getType());
-        response.setAccountId(t.getAccount().getId());
-        response.setAccountName(t.getAccount().getName());
-        response.setCategoryId(t.getCategory().getId());
-        response.setCategoryName(t.getCategory().getName());
-        response.setCreatedAt(t.getCreatedAt());
-        return response;
+        return new TransactionResponse(
+                t.getId(),
+                t.getDescription(),
+                t.getAmount(),
+                t.getOccurredOn(),
+                t.getType(),
+                t.getAccount().getId(),
+                t.getAccount().getName(),
+                t.getCategory().getId(),
+                t.getCategory().getName(),
+                t.getCreatedAt()
+        );
     }
 }

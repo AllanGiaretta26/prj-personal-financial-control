@@ -94,13 +94,13 @@ public class BudgetService {
     }
 
     private BudgetResponse toResponse(Budget b) {
-        BudgetResponse response = new BudgetResponse();
-        response.setId(b.getId());
-        response.setCategoryId(b.getCategory().getId());
-        response.setCategoryName(b.getCategory().getName());
-        response.setCategoryType(b.getCategory().getType());
-        response.setReferenceMonth(b.getReferenceMonth());
-        response.setLimitAmount(b.getLimitAmount());
-        return response;
+        return new BudgetResponse(
+                b.getId(),
+                b.getCategory().getId(),
+                b.getCategory().getName(),
+                b.getCategory().getType(),
+                b.getReferenceMonth(),
+                b.getLimitAmount()
+        );
     }
 }

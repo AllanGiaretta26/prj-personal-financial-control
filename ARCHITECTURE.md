@@ -27,6 +27,7 @@ OpenAPI. Um frontend pode consumi-la depois, sem alterar o backend.
 | Linguagem | Java 21 (LTS) | Base sólida; LTS dá suporte longo e é o que o mercado pede |
 | Framework | Spring Boot 3.x | Padrão de fato para APIs Java; convenção sobre configuração |
 | Persistência | Spring Data JPA + Hibernate | Reduz boilerplate de acesso a dados; repositórios declarativos |
+| Boilerplate de classes | Lombok (`@Getter`/`@Setter`/`@AllArgsConstructor`) | Gera getters, setters e construtores em tempo de compilação para entidades e DTOs — ver [ADR-006](docs/adr/ADR-006-lombok-em-entidades-e-dtos.md) |
 | Banco | PostgreSQL | Relacional maduro; modela bem contas/transações/orçamentos |
 | Migrations | Flyway | Versiona o schema junto do código — sem "deu certo na minha máquina" |
 | Validação | Bean Validation (Jakarta) | Valida entrada na borda, antes da regra de negócio |
@@ -211,6 +212,12 @@ Registro curto das escolhas conscientes (estilo ADR enxuto):
    sequencial — irrelevante nesta escala.
 4. **`report` sem entidade própria.** Relatório é leitura agregada, não estado.
    Modelá-lo como entidade seria duplicar dado que já vive em `transaction`.
+5. **Lombok em entidades e DTOs.** Elimina getters/setters/construtores
+   repetidos em todas as features. Em entidades JPA usamos apenas `@Getter` e
+   `@Setter` — nunca `@Data` — porque ele gera `equals`/`hashCode`/`toString`
+   sobre todos os campos, o que quebra com associações `@ManyToOne` carregadas
+   via `FetchType.LAZY` e proxies do Hibernate. Detalhes em
+   [ADR-006](docs/adr/ADR-006-lombok-em-entidades-e-dtos.md).
 
 ---
 

@@ -40,7 +40,9 @@ Feature dependency order (also the safe build order):
 
 **Service layer**: class-level `@Transactional(readOnly = true)`; write methods override with `@Transactional`. Repositories are injected via constructor.
 
-**DTO conversion**: entities never leave the service layer. Each service has a private `toResponse(Entity e)` helper. DTOs use all-args constructors (responses) or field-with-validation style (requests).
+**DTO conversion**: entities never leave the service layer. Each service has a private `toResponse(Entity e)` helper. Response DTOs use `@Getter @AllArgsConstructor`; request DTOs use `@Getter @Setter` with field-level validation annotations.
+
+**Lombok**: entities and DTOs use Lombok (`@Getter`/`@Setter`/`@AllArgsConstructor`) instead of hand-written accessors. Avoid `@Data` on JPA entities — it generates `equals`/`hashCode`/`toString` over all fields, which causes problems with lazy-loaded associations and Hibernate proxies; prefer `@Getter @Setter` there.
 
 **Error handling**: throw `ResourceNotFoundException("Account", id)` for 404 or `BusinessException("message")` for 422. `GlobalExceptionHandler` in `shared/exception/` converts both to `ProblemDetail` (RFC 7807). Never catch these inside controllers.
 
@@ -59,7 +61,7 @@ Feature dependency order (also the safe build order):
 ## Adding a new feature
 
 1. Create a package under `com.pfc.<feature>/`
-2. Add the JPA entity (`@GeneratedValue(strategy = GenerationType.UUID)`, no Lombok)
+2. Add the JPA entity (`@GeneratedValue(strategy = GenerationType.UUID)`, with `@Getter @Setter` from Lombok)
 3. Add a Flyway migration `VN__<description>.sql` if new tables are needed
 4. Follow the Controller → Service → Repository → Entity/DTO stack
 5. Add a unit test for the service (`src/test/java/com/pfc/<feature>/`)
