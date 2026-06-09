@@ -31,9 +31,13 @@ OpenAPI. Um frontend pode consumi-la depois, sem alterar o backend.
 | Banco | PostgreSQL | Relacional maduro; modela bem contas/transações/orçamentos |
 | Migrations | Flyway | Versiona o schema junto do código — sem "deu certo na minha máquina" |
 | Validação | Bean Validation (Jakarta) | Valida entrada na borda, antes da regra de negócio |
+| Segurança | Spring Security 6 + JWT (`jjwt`) + BCrypt | Autenticação stateless por token e ownership por usuário — ver [ADR-008](docs/adr/ADR-008-autenticacao-jwt-e-modelo-de-ownership.md) e [SECURITY.md](SECURITY.md) |
+| Rate limiting | Bucket4j (token-bucket em memória) | Contém força bruta/flood nas rotas de auth e na API — ver [ADR-009](docs/adr/ADR-009-rate-limiting-com-bucket4j.md) |
 | Documentação | springdoc-openapi (Swagger UI) | Gera a doc a partir do código; sempre sincronizada |
 | Ambiente local | Docker Compose | Sobe o Postgres igual em qualquer máquina |
 | Deploy | Render | Deploy gratuito de container com Postgres gerenciado |
+| Testes | JUnit 5 + Mockito (unidade) · Testcontainers (integração) | Unidade sem banco; integração contra um Postgres real efêmero, com a cadeia de segurança ativa |
+| Validação E2E | Postman CLI (coleção de segurança) | Smoke test de segurança reproduzível — ver `pfc/run-postman.ps1` |
 
 ---
 
@@ -198,13 +202,36 @@ fica previsível. Sem isso, cada endpoint inventa seu próprio formato de erro.
 
 ---
 
+## Testes e validação
+
+A verificação acontece em três níveis, todos executáveis localmente:
+
+| Nível | O que cobre | Como roda |
+|---|---|---|
+| **Unidade** | Regra de negócio dos services, isolada com Mockito (sem banco). Ex.: `AccountServiceTest`, `JwtServiceTest`, `RateLimitBucketProviderTest`. | `./mvnw test` |
+| **Integração** | Stack completa contra um **Postgres real** via Testcontainers, com a cadeia de segurança ativa e MockMvc. As classes `*ControllerIT`, `AuthControllerIT` e `RateLimitFilterIT` estendem `AbstractIntegrationTest`, que sobe um container `postgres:16` por execução (o Flyway roda no dialeto real). | `./mvnw test` (o Surefire inclui `*IT.java`) |
+| **Validação E2E de segurança** | Coleção Postman "PFC v2 — Validação de Segurança" (pastas 00→05): JWT, isolamento entre usuários (IDOR → 404-nunca-403), rate limit (429 + `Retry-After`) e cabeçalhos HTTP. | `pfc/run-postman.ps1` (Postman CLI) |
+
+O script `run-postman.ps1` torna a rodada E2E **determinística**: reseta o
+volume do Postgres (para os usuários de teste ainda não existirem) e reinicia a
+aplicação (para zerar os buckets de rate limit, que vivem em memória) antes de
+executar a coleção — caso contrário re-execuções drenam o bucket de login e a
+própria etapa de registro passa a falhar com 429. As verificações de segurança
+estão detalhadas em [SECURITY.md](SECURITY.md).
+
+---
+
 ## Decisões e trade-offs
 
 Registro curto das escolhas conscientes (estilo ADR enxuto):
 
-1. **Sem autenticação no MVP.** O foco é o domínio financeiro. Auth
-   (Spring Security + JWT) fica como evolução futura, num pacote `auth`
-   próprio — adicioná-la não deve exigir reescrever as features existentes.
+1. **Autenticação entregue na v2, sem reescrever as features.** O MVP nasceu
+   sem auth para focar no domínio financeiro
+   ([ADR-004](docs/adr/ADR-004-sem-autenticacao-no-mvp.md)); a v2 introduziu
+   Spring Security + JWT e ownership por usuário num pacote `auth` próprio —
+   exatamente como antecipado, sem tocar nas features existentes. Detalhes em
+   [ADR-008](docs/adr/ADR-008-autenticacao-jwt-e-modelo-de-ownership.md) (que
+   supersede a ADR-004) e em [SECURITY.md](SECURITY.md).
 2. **Flyway desde o início.** Adiciona um passo, mas dá histórico do schema e
    deploy reproduzível. O custo é baixo perto do ganho em previsibilidade.
 3. **UUID como chave primária.** Evita expor contagem de registros e facilita
@@ -232,5 +259,5 @@ O desenvolvimento segue três fases, alinhadas às dependências entre features:
    `budget`.
 3. **Convergência** — `report` (lê tudo), documentação OpenAPI e deploy.
 
-Evoluções previstas após o MVP: autenticação, paginação/filtros nos
-endpoints de listagem e exportação de relatórios.
+Evoluções previstas: paginação/filtros nos endpoints de listagem e exportação
+de relatórios — a autenticação, antes nesta lista, foi entregue na v2.

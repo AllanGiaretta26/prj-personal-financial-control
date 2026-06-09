@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pfc
+    username: pfc
+    password: pfc
+  flyway:
+    url: jdbc:postgresql://localhost:5432/pfc
+    user: pfc
+    password: pfc
+
+jwt:
+  # Segredo fixo para testes (>= 32 caracteres / 256 bits para HS256). Não é segredo real.
+  secret: test-only-jwt-secret-not-for-real-use-32chars-min
+  expiration-ms: 3600000
+
+rate-limit:
+  # Capacidade alta o bastante para que o conjunto de testes de integração
+  # existentes (que chamam /auth/register e /auth/login várias vezes a partir
+  # do mesmo IP de loopback do MockMvc) não esbarre no limite incidentalmente.
+  # O teste dedicado de rate limiting (RateLimitFilterIT) sobrescreve esses
+  # valores via @TestPropertySource para um contexto Spring isolado, com
+  # capacidade baixa o suficiente para disparar o 429 de forma determinística.
+  login:
+    capacity: 30
+    refill-tokens: 30
+    refill-period-seconds: 3600
+  default:
+    capacity: 200
+    refill-tokens: 200
+    refill-period-seconds: 3600

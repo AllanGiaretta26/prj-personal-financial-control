@@ -1,6 +1,7 @@
 package com.pfc.transaction;
 
 import com.pfc.account.Account;
+import com.pfc.auth.User;
 import com.pfc.category.Category;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -52,6 +53,10 @@ public class Transaction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User owner;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
