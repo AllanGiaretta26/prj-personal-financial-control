@@ -1,5 +1,6 @@
 package com.pfc.budget;
 
+import com.pfc.auth.User;
 import com.pfc.category.Category;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -35,4 +36,8 @@ public class Budget {
 
     @Column(name = "limit_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal limitAmount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User owner;
 }

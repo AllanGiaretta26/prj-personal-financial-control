@@ -3,17 +3,22 @@ package com.pfc.transaction;
 import com.pfc.account.Account;
 import com.pfc.account.AccountRepository;
 import com.pfc.account.AccountType;
+import com.pfc.auth.AuthenticatedUserProvider;
+import com.pfc.auth.User;
 import com.pfc.category.Category;
 import com.pfc.category.CategoryRepository;
 import com.pfc.category.CategoryType;
 import com.pfc.shared.exception.ResourceNotFoundException;
 import com.pfc.transaction.dto.TransactionRequest;
 import com.pfc.transaction.dto.TransactionResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,10 +29,12 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class TransactionServiceTest {
 
     @Mock
@@ -39,8 +46,19 @@ class TransactionServiceTest {
     @Mock
     private CategoryRepository categoryRepository;
 
+    @Mock
+    private AuthenticatedUserProvider authenticatedUserProvider;
+
     @InjectMocks
     private TransactionService service;
+
+    private User currentUser;
+
+    @BeforeEach
+    void setUp() {
+        currentUser = buildUser(UUID.randomUUID(), "owner@example.com");
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
+    }
 
     @Test
     void create_whenAccountNotFound_throwsResourceNotFoundException() {
@@ -48,7 +66,7 @@ class TransactionServiceTest {
         TransactionRequest req = buildRequest("Test", BigDecimal.TEN, TransactionType.EXPENSE,
                 accountId, UUID.randomUUID());
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.empty());
+        when(accountRepository.findByIdAndOwner(accountId, currentUser)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -64,13 +82,31 @@ class TransactionServiceTest {
                 accountId, categoryId);
 
         Account account = buildAccount(accountId);
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
-        when(categoryRepository.findById(categoryId)).thenReturn(Optional.empty());
+        when(accountRepository.findByIdAndOwner(accountId, currentUser)).thenReturn(Optional.of(account));
+        when(categoryRepository.findByIdAndOwner(categoryId, currentUser)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(req))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Category")
                 .hasMessageContaining(categoryId.toString());
+    }
+
+    @Test
+    void create_whenAccountBelongsToAnotherUser_throwsResourceNotFoundException() {
+        UUID accountId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+        TransactionRequest req = buildRequest("Test", BigDecimal.TEN, TransactionType.EXPENSE,
+                accountId, categoryId);
+
+        // findByIdAndOwner scoped to currentUser returns empty because the account belongs to someone else
+        when(accountRepository.findByIdAndOwner(accountId, currentUser)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.create(req))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Account")
+                .hasMessageContaining(accountId.toString());
+
+        verify(transactionRepository, never()).save(any());
     }
 
     @Test
@@ -85,8 +121,8 @@ class TransactionServiceTest {
 
         Transaction saved = buildTransaction(UUID.randomUUID(), req, account, category);
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
-        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(accountRepository.findByIdAndOwner(accountId, currentUser)).thenReturn(Optional.of(account));
+        when(categoryRepository.findByIdAndOwner(categoryId, currentUser)).thenReturn(Optional.of(category));
         when(transactionRepository.save(any(Transaction.class))).thenReturn(saved);
 
         TransactionResponse response = service.create(req);
@@ -103,12 +139,20 @@ class TransactionServiceTest {
     @Test
     void findById_whenNotFound_throwsResourceNotFoundException() {
         UUID id = UUID.randomUUID();
-        when(transactionRepository.findById(id)).thenReturn(Optional.empty());
+        when(transactionRepository.findByIdAndOwner(id, currentUser)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findById(id))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Transaction")
                 .hasMessageContaining(id.toString());
+    }
+
+    private User buildUser(UUID id, String email) {
+        User user = new User();
+        user.setId(id);
+        user.setEmail(email);
+        user.setPasswordHash("hash");
+        return user;
     }
 
     private TransactionRequest buildRequest(String description, BigDecimal amount,
@@ -129,6 +173,7 @@ class TransactionServiceTest {
         account.setName("Main Account");
         account.setType(AccountType.CHECKING);
         account.setInitialBalance(BigDecimal.ZERO);
+        account.setOwner(currentUser);
         return account;
     }
 
@@ -137,6 +182,7 @@ class TransactionServiceTest {
         category.setId(id);
         category.setName("Food");
         category.setType(CategoryType.EXPENSE);
+        category.setOwner(currentUser);
         return category;
     }
 
@@ -149,6 +195,7 @@ class TransactionServiceTest {
         t.setType(req.getType());
         t.setAccount(account);
         t.setCategory(category);
+        t.setOwner(currentUser);
         setField(t, "createdAt", LocalDateTime.now());
         return t;
     }

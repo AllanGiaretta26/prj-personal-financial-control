@@ -1,6 +1,6 @@
 # ADR-004: Sem autenticação no MVP
 
-**Status:** Accepted  
+**Status:** Superseded by ADR-008
 **Data:** 2026-06-05
 
 ## Contexto

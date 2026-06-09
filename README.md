@@ -27,12 +27,16 @@ fases descritas no [roadmap](#roadmap).
 ## Tecnologias
 
 - **Java 21** (LTS)
-- **Spring Boot 3.x** — Spring Web, Spring Data JPA
+- **Spring Boot 3.x** — Spring Web, Spring Data JPA, Spring Security
 - **PostgreSQL** — banco relacional
 - **Flyway** — versionamento de schema
 - **Bean Validation (Jakarta)** — validação na borda
+- **JWT (jjwt)** + **BCrypt** — autenticação e hash de senhas
+- **Bucket4j** — limitação de taxa (rate limiting)
+- **Lombok** — redução de boilerplate em entidades e DTOs
 - **springdoc-openapi** — documentação Swagger UI
 - **Docker Compose** — Postgres local
+- **Testcontainers** — testes de integração com Postgres real
 - **Render** — deploy
 
 ## Arquitetura
@@ -68,21 +72,35 @@ A API sobe em `http://localhost:8080`.
 
 ## Endpoints da API
 
-Contrato previsto (em construção):
+Todas as rotas de recurso são versionadas sob `/api/v1` e exigem autenticação
+(`Authorization: Bearer <token>`), exceto as de `/api/v1/auth`. Cada usuário só
+acessa os próprios dados — ver [`SECURITY.md`](./SECURITY.md).
+
+### Autenticação (`/api/v1/auth`) — públicas
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| `GET` | `/api/accounts` | Lista as contas |
-| `POST` | `/api/accounts` | Cria uma conta |
-| `GET` | `/api/categories` | Lista as categorias |
-| `POST` | `/api/categories` | Cria uma categoria |
-| `GET` | `/api/transactions` | Lista transações (com filtros por período/conta/categoria) |
-| `POST` | `/api/transactions` | Registra uma receita ou despesa |
-| `GET` | `/api/budgets` | Lista os orçamentos por categoria/mês |
-| `POST` | `/api/budgets` | Define um orçamento |
-| `GET` | `/api/reports/spending-by-category` | Gastos agregados por categoria |
-| `GET` | `/api/reports/budget-vs-actual` | Orçado vs. realizado |
-| `GET` | `/api/reports/balance-by-account` | Saldo por conta |
+| `POST` | `/api/v1/auth/register` | Registra um novo usuário e retorna um token de acesso |
+| `POST` | `/api/v1/auth/login` | Autentica com e-mail e senha e retorna um token de acesso |
+
+### Recursos financeiros — autenticadas
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/v1/accounts` | Lista as contas do usuário autenticado |
+| `POST` | `/api/v1/accounts` | Cria uma conta |
+| `GET` | `/api/v1/categories` | Lista as categorias do usuário autenticado |
+| `POST` | `/api/v1/categories` | Cria uma categoria |
+| `GET` | `/api/v1/transactions` | Lista transações (com filtros por período/conta/categoria) |
+| `POST` | `/api/v1/transactions` | Registra uma receita ou despesa |
+| `GET` | `/api/v1/budgets` | Lista os orçamentos por categoria/mês |
+| `POST` | `/api/v1/budgets` | Define um orçamento |
+| `GET` | `/api/v1/reports/spending?month=YYYY-MM` | Gastos agregados por categoria no mês |
+| `GET` | `/api/v1/reports/budget-comparison?month=YYYY-MM` | Orçado vs. realizado no mês |
+| `GET` | `/api/v1/reports/account-balances` | Saldo atual por conta |
+
+> Cada recurso também expõe `PUT /{id}` e `DELETE /{id}`. A lista completa e
+> interativa está sempre disponível no Swagger UI (ver "Documentação da API").
 
 ## Variáveis de Ambiente
 
@@ -94,9 +112,30 @@ necessária.
 no código ou no Git.
 
 ```bash
+# Conexão de runtime (role de privilégio mínimo — ver SECURITY.md > Banco de dados)
 DB_URL=jdbc:postgresql://<host>:5432/pfc
-DB_USERNAME=<usuario>
-DB_PASSWORD=<senha>
+DB_USERNAME=<usuario-runtime>
+DB_PASSWORD=<senha-runtime>
+
+# Conexão dedicada do Flyway (role dona do schema, com privilégio de DDL)
+FLYWAY_URL=jdbc:postgresql://<host>:5432/pfc   # opcional; usa DB_URL se omitida
+FLYWAY_USERNAME=<usuario-dono-do-schema>
+FLYWAY_PASSWORD=<senha-dono-do-schema>
+
+# Autenticação (Spring Security + JWT — ver SECURITY.md > Autenticação e autorização)
+JWT_SECRET=<segredo-hmac-sha-256-bits-minimo>
+JWT_EXPIRATION_MS=3600000                      # opcional; padrão 1h
+
+# CORS — domínio(s) reais do frontend, nunca "*" (ver SECURITY.md > CORS)
+CORS_ALLOWED_ORIGINS=https://meu-frontend.com
+
+# Limitação de taxa — opcionais; valores abaixo são os padrões
+RATE_LIMIT_LOGIN_CAPACITY=5
+RATE_LIMIT_LOGIN_REFILL_TOKENS=5
+RATE_LIMIT_LOGIN_REFILL_PERIOD_SECONDS=60
+RATE_LIMIT_DEFAULT_CAPACITY=60
+RATE_LIMIT_DEFAULT_REFILL_TOKENS=60
+RATE_LIMIT_DEFAULT_REFILL_PERIOD_SECONDS=60
 ```
 
 ## Documentação da API
@@ -110,9 +149,10 @@ http://localhost:8080/swagger-ui.html
 ## Segurança
 
 As práticas e o roadmap de segurança estão em
-[`SECURITY.md`](./SECURITY.md). Ponto de atenção: enquanto a autenticação não
-estiver implementada, a API só deve ir ao ar com **dados fictícios de
-demonstração** — nunca dados financeiros reais.
+[`SECURITY.md`](./SECURITY.md). A API exige autenticação (Spring Security +
+JWT) e isola os dados por usuário (autorização por dono) — registre-se em
+`POST /api/v1/auth/register`, autentique-se em `POST /api/v1/auth/login` e use
+o token retornado no header `Authorization: Bearer <token>` nas demais rotas.
 
 ## Roadmap
 
@@ -121,9 +161,12 @@ demonstração** — nunca dados financeiros reais.
 2. **Features independentes** — `account` e `category` em paralelo, depois
    `transaction` e `budget`.
 3. **Convergência** — `report`, documentação OpenAPI e deploy.
+4. **Hardening** — autenticação (Spring Security + JWT), autorização por dono,
+   cabeçalhos HTTP de segurança, usuário de banco de privilégio mínimo,
+   limitação de taxa (Bucket4j) e Testcontainers nos testes de integração.
 
-Evoluções previstas: autenticação (Spring Security + JWT), paginação e filtros
-nas listagens, exportação de relatórios.
+Evoluções previstas: paginação e filtros nas listagens, exportação de
+relatórios.
 
 ## Como Contribuir
 

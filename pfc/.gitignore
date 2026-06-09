@@ -35,3 +35,7 @@ build/
 ### Variaveis de ambiente ###
 .env
 application-local.yaml
+
+### Logs de execução local (gerados por run-postman.ps1) ###
+app.log
+app.err.log

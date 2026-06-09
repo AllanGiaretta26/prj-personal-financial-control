@@ -21,6 +21,8 @@ Convenção de preenchimento (ler antes de editar):
 
 ## [Não lançado]
 
+## [0.2.0] - 2026-06-08
+
 ### Adicionado
 - Documento de arquitetura (`ARCHITECTURE.md`) com o design das features, modelo de dados e ADRs.
 - Política e práticas de segurança (`SECURITY.md`).
@@ -28,10 +30,26 @@ Convenção de preenchimento (ler antes de editar):
 - `CLAUDE.md` com orientações específicas para Claude Code.
 - Este changelog.
 - Dependência `lombok` (escopo `provided`/opcional) para reduzir código boilerplate em entidades e DTOs.
+- Autenticação via **Spring Security + JWT** (pacote `com.pfc.auth`): `POST /api/v1/auth/register` e `POST /api/v1/auth/login` emitem um token (HMAC-SHA256, biblioteca `jjwt`); endpoints protegidos passam a exigir `Authorization: Bearer <token>`. Senhas armazenadas com hash `BCrypt`. Migration `V2__create_users.sql` cria a tabela `users`. Veja `docs/adr/ADR-008-autenticacao-jwt-e-modelo-de-ownership.md`.
+- **Autorização por dono (ownership)**: cada conta, categoria, transação e orçamento passa a pertencer a um usuário (`user_id` explícito nas quatro tabelas, migration `V3__add_user_ownership.sql`); um usuário só enxerga e manipula os próprios dados — inclusive nos relatórios agregados (`ReportService`). Tentativas de acessar ou referenciar recurso de outro usuário retornam `404 Not Found` (nunca `403`), para não vazar a existência do recurso (proteção contra IDOR). Veja `docs/adr/ADR-008-autenticacao-jwt-e-modelo-de-ownership.md`.
+- Cabeçalhos HTTP de segurança habilitados via `SecurityConfig`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` e `Strict-Transport-Security` (HSTS, `includeSubDomains`, 1 ano).
+- Política de **CORS restrita por configuração** (`app.cors.allowed-origins`, variável `CORS_ALLOWED_ORIGINS`) — nunca `*`.
+- **Limitação de taxa (rate limiting)** com Bucket4j (`com.bucket4j:bucket4j_jdk17-core`): perfil estrito por IP em `/api/v1/auth/login` e `/api/v1/auth/register` (padrão 5 req/min, anti-força-bruta) e perfil generoso por usuário autenticado nas demais rotas `/api/v1/**` (padrão 60 req/min); excesso responde `429 Too Many Requests` com corpo `ProblemDetail` e cabeçalho `Retry-After`. Limites configuráveis via `rate-limit.*` / variáveis `RATE_LIMIT_*`. Veja `docs/adr/ADR-009-rate-limiting-com-bucket4j.md`.
+- **Usuário de banco de privilégio mínimo**: a aplicação passa a conectar como a role restrita `pfc_app` (apenas `SELECT/INSERT/UPDATE/DELETE`, sem DDL); o Flyway usa uma conexão dedicada (`spring.flyway.url/user/password`) com a role dona do schema. Script `pfc/db-init/01-create-app-role.sql` cria a role e os privilégios padrão (`ALTER DEFAULT PRIVILEGES`) no ambiente local. Veja `docs/adr/ADR-007-usuario-banco-privilegio-minimo.md`.
+- **Testcontainers** nos testes de integração: `AbstractIntegrationTest` sobe um Postgres real (`@ServiceConnection`) durante `./mvnw test`, substituindo o uso de H2/mocks nessa camada; novos testes `*ControllerIT` (account, category, transaction, budget, auth) cobrem o fluxo HTTP completo, incluindo autenticação, isolamento entre usuários e rate limiting.
 
 ### Alterado
 - Entidades JPA (`Account`, `Category`, `Transaction`, `Budget`) e DTOs de request/response refatorados para usar anotações Lombok (`@Getter`, `@Setter`, `@AllArgsConstructor`) no lugar de getters/setters/construtores escritos manualmente.
 - `TransactionResponse` e `BudgetResponse` passaram a ser construídos via construtor all-args (alinhando com o padrão já adotado por `AccountResponse`/`CategoryResponse`), em vez de `new` + setters.
+- `Account`, `Category`, `Transaction`, `Budget` e `ReportService` passam a resolver e filtrar todos os dados pelo usuário autenticado (`AuthenticatedUserProvider`), nunca pela base inteira.
+
+### Corrigido
+- Removido bean redundante `DaoAuthenticationProvider` de `SecurityConfig` — o `AuthenticationManager` já é montado automaticamente a partir de `CustomUserDetailsService` + `PasswordEncoder`, e a declaração manual apenas duplicava a configuração (gerando um aviso do Spring Security no startup).
+- Erros de cliente em rotas protegidas (corpo JSON malformado, id com formato inválido, método/rota não suportados) retornavam `401 Unauthorized` — mascarados pelo encaminhamento ao endpoint interno `/error`, que é autenticado. Agora o `GlobalExceptionHandler` estende `ResponseEntityExceptionHandler` e devolve o status HTTP correto (`400`/`404`/`405`...) em `ProblemDetail`.
+
+### Segurança
+- `GlobalExceptionHandler` ganhou uma rede de segurança (`@ExceptionHandler(Exception.class)`) que responde `500 Internal Server Error` genérico para qualquer exceção inesperada — sem stacktrace nem detalhe interno no corpo; o erro real é registrado apenas no log do servidor.
+- `server.error.include-stacktrace`, `include-message` e `include-binding-errors` fixados em `never` no `application.yaml` (defesa em profundidade, independente do default do framework).
 
 ## [0.1.0] - 2026-06-05
 

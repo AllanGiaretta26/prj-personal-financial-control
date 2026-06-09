@@ -13,10 +13,51 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # Conexão dedicada para migrations: roda como o usuário dono do schema
+    # (privilégios de DDL), enquanto spring.datasource.* (acima) usa o
+    # usuário de runtime de privilégio mínimo (sem DDL). Ver ADR-007 e
+    # SECURITY.md > "Banco de dados".
+    url: ${FLYWAY_URL:${DB_URL}}
+    user: ${FLYWAY_USERNAME}
+    password: ${FLYWAY_PASSWORD}
 
 server:
   port: 8080
+  error:
+    # Nunca expor detalhes internos na resposta de erro (defesa em profundidade,
+    # além do GlobalExceptionHandler). 'never' é o padrão do Spring Boot, mas é
+    # declarado aqui para a garantia não depender do default do framework.
+    # Ver SECURITY.md > "Exposição de dados e logs".
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
 
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+jwt:
+  # Segredo HMAC-SHA (>= 256 bits / 32 caracteres) injetado via variável de
+  # ambiente — nunca em texto no repositório (ver SECURITY.md > Gestão de segredos).
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+
+app:
+  cors:
+    # Em produção, sobrescrever com o(s) domínio(s) reais do frontend — nunca "*"
+    # (ver SECURITY.md > CORS). O padrão local cobre apenas hosts de desenvolvimento.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:*}
+
+rate-limit:
+  # Limite estrito por IP para as rotas de autenticação (alvo de força bruta):
+  # 5 tentativas por minuto, renovando 5 tokens a cada 60s (bucket cheio = burst de 5).
+  login:
+    capacity: ${RATE_LIMIT_LOGIN_CAPACITY:5}
+    refill-tokens: ${RATE_LIMIT_LOGIN_REFILL_TOKENS:5}
+    refill-period-seconds: ${RATE_LIMIT_LOGIN_REFILL_PERIOD_SECONDS:60}
+  # Limite mais generoso para as demais rotas autenticadas (uso normal da API):
+  # 60 requisições por minuto por usuário (ou por IP, quando não autenticado).
+  default:
+    capacity: ${RATE_LIMIT_DEFAULT_CAPACITY:60}
+    refill-tokens: ${RATE_LIMIT_DEFAULT_REFILL_TOKENS:60}
+    refill-period-seconds: ${RATE_LIMIT_DEFAULT_REFILL_PERIOD_SECONDS:60}

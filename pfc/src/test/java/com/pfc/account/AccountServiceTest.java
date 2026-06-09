@@ -2,12 +2,17 @@ package com.pfc.account;
 
 import com.pfc.account.dto.AccountRequest;
 import com.pfc.account.dto.AccountResponse;
+import com.pfc.auth.AuthenticatedUserProvider;
+import com.pfc.auth.User;
 import com.pfc.shared.exception.ResourceNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,18 +27,30 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AccountServiceTest {
 
     @Mock
     private AccountRepository repository;
 
+    @Mock
+    private AuthenticatedUserProvider authenticatedUserProvider;
+
     @InjectMocks
     private AccountService service;
+
+    private User currentUser;
+
+    @BeforeEach
+    void setUp() {
+        currentUser = buildUser(UUID.randomUUID(), "owner@example.com");
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
+    }
 
     @Test
     void findById_whenNotFound_throwsResourceNotFoundException() {
         UUID id = UUID.randomUUID();
-        when(repository.findById(id)).thenReturn(Optional.empty());
+        when(repository.findByIdAndOwner(id, currentUser)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findById(id))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -60,7 +77,7 @@ class AccountServiceTest {
     @Test
     void delete_whenNotFound_throwsResourceNotFoundException() {
         UUID id = UUID.randomUUID();
-        when(repository.existsById(id)).thenReturn(false);
+        when(repository.existsByIdAndOwner(id, currentUser)).thenReturn(false);
 
         assertThatThrownBy(() -> service.delete(id))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -77,7 +94,7 @@ class AccountServiceTest {
         AccountRequest request = buildRequest("New Name", AccountType.CHECKING, BigDecimal.valueOf(500));
 
         Account updated = buildAccount(id, "New Name", AccountType.CHECKING, BigDecimal.valueOf(500));
-        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.findByIdAndOwner(id, currentUser)).thenReturn(Optional.of(existing));
         when(repository.save(any(Account.class))).thenReturn(updated);
 
         AccountResponse response = service.update(id, request);
@@ -86,6 +103,29 @@ class AccountServiceTest {
         assertThat(response.getType()).isEqualTo(AccountType.CHECKING);
         assertThat(response.getInitialBalance()).isEqualByComparingTo(BigDecimal.valueOf(500));
         verify(repository).save(existing);
+    }
+
+    @Test
+    void update_whenNotOwnedByCurrentUser_throwsResourceNotFoundException() {
+        UUID id = UUID.randomUUID();
+        AccountRequest request = buildRequest("New Name", AccountType.CHECKING, BigDecimal.valueOf(500));
+
+        when(repository.findByIdAndOwner(id, currentUser)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(id, request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Account")
+                .hasMessageContaining(id.toString());
+
+        verify(repository, never()).save(any());
+    }
+
+    private User buildUser(UUID id, String email) {
+        User user = new User();
+        setField(user, "id", id);
+        user.setEmail(email);
+        user.setPasswordHash("hash");
+        return user;
     }
 
     private AccountRequest buildRequest(String name, AccountType type, BigDecimal initialBalance) {
