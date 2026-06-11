@@ -177,4 +177,7 @@ relatórios.
 
 ## Licença
 
-Distribuído sob a licença MIT. Veja o arquivo `LICENSE` para detalhes.
+Distribuído sob a licença MIT. Veja o arquivo [`LICENSE`](LICENSE) para detalhes.
+
+---
+Desenvolvido por [Allan Giaretta](https://github.com/AllanGiaretta26)
