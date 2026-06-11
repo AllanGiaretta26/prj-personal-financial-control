@@ -36,6 +36,20 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expõe SOMENTE o health (para o health check da plataforma de deploy);
+        # nunca env, beans, mappings etc., que vazariam config interna.
+        include: health
+  endpoint:
+    health:
+      # Nunca detalhar componentes (db, disco, ...) na resposta pública —
+      # defesa em profundidade, consistente com server.error.include-* acima.
+      show-details: never
+      show-components: never
+
 jwt:
   # Segredo HMAC-SHA (>= 256 bits / 32 caracteres) injetado via variável de
   # ambiente — nunca em texto no repositório (ver SECURITY.md > Gestão de segredos).

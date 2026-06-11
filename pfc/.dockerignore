@@ -1,0 +1,18 @@
+# Artefatos de build e IDE — nunca enviar pro contexto de build do Docker.
+target/
+.idea/
+*.iml
+.vscode/
+
+# Config local com credenciais (gitignored, mas reforçado aqui).
+src/main/resources/application-local.yaml
+
+# Não precisa do wrapper: o build usa a imagem oficial do Maven.
+mvnw
+mvnw.cmd
+.mvn/
+
+# Docs e infra que não entram na imagem.
+db-init/
+deploy/
+*.md

@@ -21,6 +21,11 @@ Convenção de preenchimento (ler antes de editar):
 
 ## [Não lançado]
 
+### Adicionado
+- Suporte a deploy no **Render** via Docker: `pfc/Dockerfile` (build multi-stage com imagem Maven/Temurin 21 e runtime JRE 21 como usuário sem privilégios) e `pfc/.dockerignore`. A aplicação é configurada por variáveis de ambiente já existentes (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `FLYWAY_*`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`), sem ativar o perfil `local`.
+- Script `pfc/deploy/render/create-app-role.sql` para criar a role de runtime de privilégio mínimo (`pfc_app`) no Postgres gerenciado do Render, preservando a separação DDL/runtime do ADR-007.
+- Endpoint público de **health check** `GET /actuator/health` (dependência `spring-boot-starter-actuator`), para a verificação de saúde da plataforma de deploy. Apenas o `health` é exposto e sem detalhes de componentes (`show-details`/`show-components: never`), para não vazar configuração interna.
+
 ## [0.2.0] - 2026-06-08
 
 ### Adicionado
