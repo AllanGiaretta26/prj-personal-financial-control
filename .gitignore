@@ -2,3 +2,7 @@
 *.local
 .vscode/
 .claude/
+
+# Script de deploy com a senha real da role pfc_app (DB_PASSWORD de runtime).
+# Versionamos apenas o .example com placeholder.
+pfc/deploy/render/create-app-role.sql

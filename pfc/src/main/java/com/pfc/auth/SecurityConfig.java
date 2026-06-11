@@ -36,7 +36,10 @@ public class SecurityConfig {
             "/api/v1/auth/**",
             "/swagger-ui.html",
             "/swagger-ui/**",
-            "/v3/api-docs/**"
+            "/v3/api-docs/**",
+            // Health check da plataforma de deploy (Render). Só o /actuator/health
+            // é exposto e sem detalhes (ver application.yaml > management).
+            "/actuator/health"
     };
 
     private final JwtService jwtService;
