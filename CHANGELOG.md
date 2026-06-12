@@ -26,6 +26,10 @@ Convenção de preenchimento (ler antes de editar):
 - Script `pfc/deploy/render/create-app-role.sql` para criar a role de runtime de privilégio mínimo (`pfc_app`) no Postgres gerenciado do Render, preservando a separação DDL/runtime do ADR-007.
 - Endpoint público de **health check** `GET /actuator/health` (dependência `spring-boot-starter-actuator`), para a verificação de saúde da plataforma de deploy. Apenas o `health` é exposto e sem detalhes de componentes (`show-details`/`show-components: never`), para não vazar configuração interna.
 
+### Segurança
+- `SECURITY.md` atualizado para o estado de produção: versões suportadas (release `0.2.0`), alertas do **Dependabot** habilitados (seção Dependências agora `[Em vigor]`) e checklist de deploy revisado.
+- **Canal privado de report de vulnerabilidade** ativado (GitHub Private Vulnerability Reporting); a seção "Como reportar" passa a apontar para a aba Security do repositório em vez de e-mail.
+
 ## [0.2.0] - 2026-06-08
 
 ### Adicionado
