@@ -3,10 +3,22 @@
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-relacional-blue)
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
+![Deploy](https://img.shields.io/badge/deploy-online-success)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 > API REST para controle de finanças pessoais — contas, categorias, transações, orçamentos e relatórios de agregação.
+
+## Ambiente online
+
+| Serviço | URL | Hospedagem |
+|---|---|---|
+| **Frontend** | https://prj-personal-financial-control-frontend.pages.dev | Cloudflare Pages |
+| **API (backend)** | https://prj-personal-financial-control.onrender.com | Render (Docker) |
+| **Swagger UI** | https://prj-personal-financial-control.onrender.com/swagger-ui/index.html | Render |
+| **Health check** | https://prj-personal-financial-control.onrender.com/actuator/health | Render |
+
+> O backend roda no plano gratuito do Render, que **hiberna após inatividade** —
+> a primeira requisição pode levar ~50s para "acordar" o serviço.
 
 ## Descrição
 
@@ -16,13 +28,14 @@ contas, categorias, transações e orçamentos, e expõe endpoints de agregaçã
 para responder perguntas como "quanto gastei por categoria neste mês?" e
 "como está o orçado vs. realizado?".
 
-Não há interface gráfica neste escopo: a entrega é a API documentada via
-OpenAPI, pronta para ser consumida por qualquer frontend.
+A API é documentada via OpenAPI e está em produção, consumida por um
+**frontend** dedicado ([repositório](https://github.com/AllanGiaretta26/prj-personal-financial-control-frontend),
+hospedado no Cloudflare Pages — ver "Ambiente online").
 
 ## Status do Projeto
 
-Em desenvolvimento. O núcleo de features está sendo construído seguindo as
-fases descritas no [roadmap](#roadmap).
+**Em produção** (backend no Render, frontend no Cloudflare Pages). O núcleo de
+features segue evoluindo conforme as fases do [roadmap](#roadmap).
 
 ## Tecnologias
 
@@ -37,7 +50,9 @@ fases descritas no [roadmap](#roadmap).
 - **springdoc-openapi** — documentação Swagger UI
 - **Docker Compose** — Postgres local
 - **Testcontainers** — testes de integração com Postgres real
-- **Render** — deploy
+- **Docker** — empacotamento da aplicação para deploy
+- **Render** — deploy do backend (Docker) + Postgres gerenciado
+- **Cloudflare Pages** — hospedagem do frontend
 
 ## Arquitetura
 
@@ -113,12 +128,13 @@ no código ou no Git.
 
 ```bash
 # Conexão de runtime (role de privilégio mínimo — ver SECURITY.md > Banco de dados)
-DB_URL=jdbc:postgresql://<host>:5432/pfc
+# A URL é só host/banco, sem credenciais embutidas; use sslmode=require em produção.
+DB_URL=jdbc:postgresql://<host>:5432/pfc?sslmode=require
 DB_USERNAME=<usuario-runtime>
 DB_PASSWORD=<senha-runtime>
 
 # Conexão dedicada do Flyway (role dona do schema, com privilégio de DDL)
-FLYWAY_URL=jdbc:postgresql://<host>:5432/pfc   # opcional; usa DB_URL se omitida
+FLYWAY_URL=jdbc:postgresql://<host>:5432/pfc?sslmode=require   # opcional; usa DB_URL se omitida
 FLYWAY_USERNAME=<usuario-dono-do-schema>
 FLYWAY_PASSWORD=<senha-dono-do-schema>
 
@@ -126,8 +142,9 @@ FLYWAY_PASSWORD=<senha-dono-do-schema>
 JWT_SECRET=<segredo-hmac-sha-256-bits-minimo>
 JWT_EXPIRATION_MS=3600000                      # opcional; padrão 1h
 
-# CORS — domínio(s) reais do frontend, nunca "*" (ver SECURITY.md > CORS)
-CORS_ALLOWED_ORIGINS=https://meu-frontend.com
+# CORS — domínio(s) reais do frontend, nunca "*" (ver SECURITY.md > CORS).
+# Lista separada por vírgula; aceita curinga de subdomínio (allowedOriginPatterns).
+CORS_ALLOWED_ORIGINS=https://meu-frontend.com,https://*.meu-frontend.pages.dev
 
 # Limitação de taxa — opcionais; valores abaixo são os padrões
 RATE_LIMIT_LOGIN_CAPACITY=5
@@ -138,13 +155,22 @@ RATE_LIMIT_DEFAULT_REFILL_TOKENS=60
 RATE_LIMIT_DEFAULT_REFILL_PERIOD_SECONDS=60
 ```
 
+## Deploy
+
+O backend é publicado no **Render** via **Docker** (`pfc/Dockerfile`, build
+multi-stage Maven/Temurin 21 → JRE 21). O serviço lê toda a configuração das
+variáveis de ambiente acima (sem o perfil `local`) e roda as migrations do
+Flyway no boot. O Postgres gerenciado do Render usa duas roles (dona do schema
+para o Flyway, runtime de privilégio mínimo para a aplicação) — o script
+`pfc/deploy/render/create-app-role.example.sql` cria a role de runtime. O
+frontend é publicado no **Cloudflare Pages**.
+
 ## Documentação da API
 
-Com a aplicação rodando, a documentação interativa (Swagger UI) fica em:
+A documentação interativa (Swagger UI) está disponível:
 
-```
-http://localhost:8080/swagger-ui.html
-```
+- **Produção:** https://prj-personal-financial-control.onrender.com/swagger-ui/index.html
+- **Local** (com a aplicação rodando): `http://localhost:8080/swagger-ui.html`
 
 ## Segurança
 
