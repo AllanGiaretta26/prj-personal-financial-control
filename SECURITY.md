@@ -11,17 +11,19 @@
 
 | Versão | Suporte de segurança |
 |---|---|
-| `main` (em desenvolvimento) | Sim |
-| Releases anteriores | Não há ainda |
+| `main` (em produção no Render) | Sim |
+| `0.2.0` (release atual) | Sim |
+| `< 0.2.0` | Não |
 
 ---
 
 ## Como reportar uma vulnerabilidade
 
 Não abra issue pública para falhas de segurança — isso expõe o problema antes
-da correção. Reporte de forma privada por e-mail para **[seu-email]**,
-incluindo passos para reproduzir e o impacto observado. O retorno é dado assim
-que a falha for avaliada.
+da correção. Use o **canal privado de report do GitHub**: aba **Security** do
+repositório → **Report a vulnerability** ([Private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)).
+Inclua passos para reproduzir e o impacto observado. O retorno é dado assim que
+a falha for avaliada.
 
 ---
 
@@ -161,11 +163,14 @@ Habilitados em `SecurityConfig` junto com o Spring Security:
 
 ---
 
-## Dependências · [Planejado]
+## Dependências · [Em vigor]
 
+- **[Em vigor]** **Alertas do Dependabot** habilitados no repositório GitHub —
+  notificam automaticamente quando uma dependência passa a ter CVE conhecido.
+  Sem CVE em aberto na última verificação.
 - Manter dependências atualizadas — CVEs novos surgem em bibliotecas conhecidas.
-- Habilitar o **Dependabot** (alertas automáticos de dependência vulnerável no
-  GitHub) e, opcionalmente, o **OWASP Dependency-Check** no build.
+- **[Planejado]** Adicionar `.github/dependabot.yml` (PRs automáticos de
+  atualização) e, opcionalmente, o **OWASP Dependency-Check** no build.
 
 ---
 
@@ -243,12 +248,12 @@ inspeção de código:
 
 Antes de cada deploy em produção:
 
-- [ ] Nenhum segredo no código ou no histórico do Git
-- [ ] Variáveis de ambiente configuradas no painel do Render
-- [ ] `DATABASE_URL` com `sslmode=require`
-- [x] Usuário do banco com privilégio mínimo
-- [x] CORS restrito ao domínio do frontend (sem `*`)
+- [x] Nenhum segredo no código ou no histórico do Git (`create-app-role.sql` gitignorado)
+- [x] Variáveis de ambiente configuradas no painel do Render
+- [x] `DB_URL` / `FLYWAY_URL` com `sslmode=require` (verificado: app sobe e conecta com SSL exigido)
+- [x] Usuário do banco com privilégio mínimo (`pfc_app` runtime; validado no smoke test E2E)
+- [x] CORS sem `*` (default restrito; sobrescrever com o domínio do frontend quando publicado)
 - [x] Stacktrace desativado na resposta de erro (`server.error.include-stacktrace=never` + `GlobalExceptionHandler`)
-- [ ] Dependências sem CVE crítico em aberto
+- [x] Dependências sem CVE crítico em aberto (alertas Dependabot ativos, 0 em aberto)
 - [x] Se há dado real exposto, a autenticação está ativa
 - [x] Suíte de validação de segurança passando (testes de integração + `pfc/run-postman.ps1`)
