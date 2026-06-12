@@ -15,8 +15,9 @@ relatórios (gastos por categoria, orçado vs. realizado, saldo por conta).
 É a evolução de uma planilha de controle financeiro para um serviço HTTP
 versionado, testável e deployável.
 
-Não há interface gráfica neste escopo: a entrega é a API documentada via
-OpenAPI. Um frontend pode consumi-la depois, sem alterar o backend.
+O foco deste repositório é o backend: a entrega é a API documentada via
+OpenAPI. Ela é consumida por um frontend dedicado (repositório separado,
+hospedado no Cloudflare Pages), sem que isso altere o backend.
 
 ---
 
@@ -35,7 +36,7 @@ OpenAPI. Um frontend pode consumi-la depois, sem alterar o backend.
 | Rate limiting | Bucket4j (token-bucket em memória) | Contém força bruta/flood nas rotas de auth e na API — ver [ADR-009](docs/adr/ADR-009-rate-limiting-com-bucket4j.md) |
 | Documentação | springdoc-openapi (Swagger UI) | Gera a doc a partir do código; sempre sincronizada |
 | Ambiente local | Docker Compose | Sobe o Postgres igual em qualquer máquina |
-| Deploy | Render | Deploy gratuito de container com Postgres gerenciado |
+| Deploy | Render (Docker) | Container (`pfc/Dockerfile`, multi-stage) com Postgres gerenciado; frontend no Cloudflare Pages |
 | Testes | JUnit 5 + Mockito (unidade) · Testcontainers (integração) | Unidade sem banco; integração contra um Postgres real efêmero, com a cadeia de segurança ativa |
 | Validação E2E | Postman CLI (coleção de segurança) | Smoke test de segurança reproduzível — ver `pfc/run-postman.ps1` |
 
